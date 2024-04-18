@@ -13,7 +13,7 @@ PORT_FOR_SEND_SOC = 8321
 
 WINDOW_WIDTH = 700
 WINDOW_HEIGHT = 500
-FPS = 60
+FPS = 30
 pygame.init()
 size = (WINDOW_WIDTH, WINDOW_HEIGHT)
 screen = pygame.display.set_mode(size)
@@ -32,6 +32,7 @@ W_RELEASED_OPCODE = b'KUWK'
 A_RELEASED_OPCODE = b'KUAK'
 S_RELEASED_OPCODE = b'KUSK'
 D_RELEASED_OPCODE = b'KUDK'
+
 
 def create_connection():
     recv_soc = socket.socket()
@@ -54,10 +55,10 @@ class ReceiveClient(threading.Thread):
 
     def handle_server_msg(self):
         while not finish:
-            on_screen_group = pickle.loads(tcp.recv_by_size(self.soc))
+            on_screen_group, player = pickle.loads(tcp.recv_by_size(self.soc))
             screen.fill((255, 255, 255, 0))
             for a in on_screen_group:
-                a.draw(screen)
+                a.draw(screen, (player.position.x, player.position.y))
 
     def run(self) -> None:
         self.handle_server_msg()

@@ -22,8 +22,7 @@ TIME_BETWEEN_EACH_REFRESH = 0.017
 
 universe_group = pygame.sprite.Group()
 universe_group_lock = threading.Lock()
-WORLD_SIZE_X = 1000000
-WORLD_SIZE_Y = 1000000
+
 
 
 class Client(threading.Thread):
@@ -44,7 +43,7 @@ class Client(threading.Thread):
         last_sent = b''
 
         while self.connected:
-            data = pickle.dumps(universe_group)
+            data = pickle.dumps((universe_group, self.player))
             if data != last_sent:
                 tcp.send_with_size(self.send_soc, data)
                 last_sent = data
