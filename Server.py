@@ -21,7 +21,9 @@ D_RELEASED_OPCODE = b'KUDK'
 TIME_BETWEEN_EACH_REFRESH = 0.017
 
 universe_group = pygame.sprite.Group()
+player_group = pygame.sprite.Group()
 universe_group_lock = threading.Lock()
+player_group_lock = threading.Lock()
 
 
 
@@ -36,7 +38,10 @@ class Client(threading.Thread):
         self.recv_soc.connect((a[0], self.CLIENT_PORT_FOR_RECV_SOC))
 
         self.player = visibal_objects.Player()
-        self.player.add(universe_group)
+        with universe_group_lock:
+            self.player.add(universe_group)
+        with player_group_lock:
+            self.player.add(player_group)
         self.connected = True
 
     def send_soc_handle(self):
@@ -104,8 +109,11 @@ class Server(threading.Thread):
 
 
 def update_universe_group():
+    enemy = visibal_objects.CreateEnemy()
     with universe_group_lock:
         universe_group.update()
+        if enemy is not None:
+            enemy.add(universe_group)
 
 
 def main():

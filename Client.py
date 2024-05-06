@@ -13,7 +13,7 @@ PORT_FOR_SEND_SOC = 8321
 
 WINDOW_WIDTH = 700
 WINDOW_HEIGHT = 500
-FPS = 30
+FPS = 60
 pygame.init()
 size = (WINDOW_WIDTH, WINDOW_HEIGHT)
 screen = pygame.display.set_mode(size)
