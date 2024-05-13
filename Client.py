@@ -10,23 +10,31 @@ SERVER_IP = '127.0.0.1'
 SERVER_PORT = 3321
 NETWORK_CARD = '127.0.0.1'
 PORT_FOR_SEND_SOC = 8321
-
+MAP_LIMITS = (-1000, -1000, 1000, 1000)
 WINDOW_WIDTH = 700
 WINDOW_HEIGHT = 500
 FPS = 60
+PLAYER_SIZE = (40, 50)
+
+
 pygame.init()
 size = (WINDOW_WIDTH, WINDOW_HEIGHT)
 screen = pygame.display.set_mode(size)
 pygame.display.set_caption("Game")
 clock = pygame.time.Clock()
 finish = False
+PATH_FOR_BACKGROUND = "res\\background.jpg"
+background_image = pygame.image.load(PATH_FOR_BACKGROUND)
+background_image = pygame.transform.scale(background_image, (MAP_LIMITS[2] - MAP_LIMITS[0], MAP_LIMITS[3] - MAP_LIMITS[1]))
 
+screen_lock = threading.Lock()
 QUIT_OPCODE = b'QUIT'
 
 W_PRESSED_OPCODE = b'KDWK'
 A_PRESSED_OPCODE = b'KDAK'
 S_PRESSED_OPCODE = b'KDSK'
 D_PRESSED_OPCODE = b'KDDK'
+MOUSE_PRESSED_OPCODE = b'MPOP'
 
 W_RELEASED_OPCODE = b'KUWK'
 A_RELEASED_OPCODE = b'KUAK'
@@ -45,6 +53,7 @@ def create_connection():
         send_soc, a = send_soc_serv.accept()
         if a[0] == SERVER_IP:
             got_second_connection = True
+            print("Connection process complete")
     return recv_soc, send_soc
 
 
@@ -54,11 +63,22 @@ class ReceiveClient(threading.Thread):
         self.soc = recv_soc
 
     def handle_server_msg(self):
+        global finish
         while not finish:
-            on_screen_group, player = pickle.loads(tcp.recv_by_size(self.soc))
-            screen.fill((255, 255, 255, 0))
-            for a in on_screen_group:
-                a.draw(screen, (player.position.x, player.position.y))
+            data = tcp.recv_by_size(self.soc)
+            if data == b'':
+                finish = True
+                print("Seems server disconnected")
+            else:
+                on_screen_group, player = pickle.loads(data)
+                screen_pos = (-((MAP_LIMITS[2] - MAP_LIMITS[0])/2) - player.position.x + WINDOW_WIDTH/2 - PLAYER_SIZE[0]/2,
+                              -((MAP_LIMITS[3] - MAP_LIMITS[1])/2) - player.position.y + WINDOW_HEIGHT/2 - PLAYER_SIZE[1]/2)
+                with screen_lock:
+                    screen .fill((255,255,255,0))
+                    screen.blit(background_image, screen_pos)
+
+                    for a in on_screen_group:
+                        a.draw(screen, (player.position.x, player.position.y))
 
     def run(self) -> None:
         self.handle_server_msg()
@@ -73,36 +93,39 @@ def main():
     while not finish:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                tcp.send_with_size(send_soc, QUIT_OPCODE)
+                tcp.send_with_size(send_soc, pickle.dumps(QUIT_OPCODE,))
                 finish = True
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_w and not buttons_pressed[pygame.K_w]:
-                    tcp.send_with_size(send_soc, W_PRESSED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((W_PRESSED_OPCODE,)))
                     buttons_pressed[pygame.K_w] = True
                 elif event.key == pygame.K_a and not buttons_pressed[pygame.K_a]:
-                    tcp.send_with_size(send_soc, A_PRESSED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((A_PRESSED_OPCODE,)))
                     buttons_pressed[pygame.K_a] = True
                 elif event.key == pygame.K_s and not buttons_pressed[pygame.K_s]:
-                    tcp.send_with_size(send_soc, S_PRESSED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((S_PRESSED_OPCODE,)))
                     buttons_pressed[pygame.K_s] = True
                 elif event.key == pygame.K_d and not buttons_pressed[pygame.K_d]:
-                    tcp.send_with_size(send_soc, D_PRESSED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((D_PRESSED_OPCODE,)))
                     buttons_pressed[pygame.K_d] = True
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_w and buttons_pressed[pygame.K_w]:
-                    tcp.send_with_size(send_soc, W_RELEASED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((W_RELEASED_OPCODE,)))
                     buttons_pressed[pygame.K_w] = False
                 elif event.key == pygame.K_a and buttons_pressed[pygame.K_a]:
-                    tcp.send_with_size(send_soc, A_RELEASED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((A_RELEASED_OPCODE,)))
                     buttons_pressed[pygame.K_a] = False
                 elif event.key == pygame.K_s and buttons_pressed[pygame.K_s]:
-                    tcp.send_with_size(send_soc, S_RELEASED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((S_RELEASED_OPCODE,)))
                     buttons_pressed[pygame.K_s] = False
                 elif event.key == pygame.K_d and buttons_pressed[pygame.K_d]:
-                    tcp.send_with_size(send_soc, D_RELEASED_OPCODE)
+                    tcp.send_with_size(send_soc, pickle.dumps((D_RELEASED_OPCODE,)))
                     buttons_pressed[pygame.K_d] = False
-
-        pygame.display.flip()
+            elif event.type == pygame.MOUSEBUTTONUP:
+                pos = pygame.mouse.get_pos()
+                tcp.send_with_size(send_soc, pickle.dumps((MOUSE_PRESSED_OPCODE, pos)))
+        with screen_lock:
+            pygame.display.flip()
         clock.tick(FPS)
 
 
