@@ -1,5 +1,5 @@
 size_header_size = 5
-DEBUG_FLAG = False
+DEBUG_FLAG = True
 
 
 def __log(prefix, data, max_to_print=100):
@@ -34,7 +34,7 @@ def recv_by_size(sock, return_type="bytes"):
         __log("Receive", data)
         if return_type == "string":
             return data.decode()
-    except OSError:
+    except:
         data = '' if return_type == "string" else b''
     return data
 
